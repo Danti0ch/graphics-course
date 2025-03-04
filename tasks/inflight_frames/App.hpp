@@ -10,6 +10,8 @@
 #include <stb_image.h>
 #include "shaders/UniformParams.h"
 
+#define N_FRAMES_IN_FLIGHT 2
+
 class App
 {
 public:
@@ -30,7 +32,7 @@ private:
   glm::uvec2 resolution;
   bool useVsync;
 
-  etna::Buffer constants;
+  etna::Buffer constants[N_FRAMES_IN_FLIGHT];
 
   std::unique_ptr<etna::Window> vkWindow;
   std::unique_ptr<etna::PerFrameCmdMgr> commandManager;
@@ -43,6 +45,7 @@ private:
   etna::GraphicsPipeline framePipeline;
   etna::Image   image;
 
+  uint32_t currentFrame = 0;
   UniformParams uniformParams{
     .resolution = {},
     .mouse = {},

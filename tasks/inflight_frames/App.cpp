@@ -40,7 +40,7 @@ App::App()
       .deviceExtensions = deviceExtensions,
       // Replace with an index if etna detects your preferred GPU incorrectly
       .physicalDeviceIndexOverride = {},
-      .numFramesInFlight = 2,
+      .numFramesInFlight = N_FRAMES_IN_FLIGHT,
     });
   }
 
@@ -138,14 +138,15 @@ App::App()
       0,
       std::span(reinterpret_cast<const std::byte*>(file), width * height * 4));
   
-  constants = etna::get_context().createBuffer(etna::Buffer::CreateInfo{
-    .size = sizeof(UniformParams),
-    .bufferUsage = vk::BufferUsageFlagBits::eUniformBuffer,
-    .memoryUsage = VMA_MEMORY_USAGE_CPU_ONLY,
-    .name = "constants",
-  });
-
-  constants.map();
+  for (auto &constant :constants) {
+    constant = etna::get_context().createBuffer(etna::Buffer::CreateInfo{
+      .size = sizeof(UniformParams),
+      .bufferUsage = vk::BufferUsageFlagBits::eUniformBuffer,
+      .memoryUsage = VMA_MEMORY_USAGE_CPU_ONLY,
+      .name = "constants",
+    });
+    constant.map();
+  }
 }
 
 App::~App()
@@ -160,6 +161,7 @@ void App::run()
     windowing.poll();
 
     drawFrame();
+    currentFrame = (currentFrame + 1) % N_FRAMES_IN_FLIGHT;
   }
 
   // We need to wait for the GPU to execute the last frame before destroying
@@ -177,7 +179,7 @@ void App::drawFrame()
     uniformParams.mouse = {mousePosition.x, mousePosition.y};
     uniformParams.time = static_cast<float>(windowing.getTime());
 
-    std::memcpy(constants.data(), &uniformParams, sizeof(uniformParams));
+    std::memcpy(constants[currentFrame].data(), &uniformParams, sizeof(uniformParams));
   }
   ZoneScopedN("drawFrame");
   FrameMark;
@@ -241,7 +243,7 @@ void App::drawFrame()
       	localShadertoyInfo.getDescriptorLayoutId(0),
       	currentCmdBuf,
       	{etna::Binding{0, textureImage.genBinding(sampler.get(), vk::ImageLayout::eGeneral)},
-        etna::Binding{1, constants.genBinding()}}
+        etna::Binding{1, constants[currentFrame].genBinding()}}
 	).getVkSet();
 
         // Texture from image
